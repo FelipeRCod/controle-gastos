@@ -588,6 +588,46 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
   filterChipTextActive: {
     color: themeColors.jade,
   },
+  periodModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  periodModalCard: {
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    maxHeight: '86%',
+    padding: 16,
+  },
+  periodModalTitle: {
+    color: themeColors.text,
+    fontSize: 20,
+    fontWeight: '900',
+    marginBottom: 16,
+  },
+  periodModalActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 15,
+  },
+  monthOption: {
+    alignItems: 'center',
+    borderColor: themeColors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    minWidth: '30%',
+    paddingHorizontal: 8,
+    paddingVertical: 9,
+  },
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
