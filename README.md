@@ -1,6 +1,7 @@
 # Jade Controle de Gastos
 
 Aplicativo mobile desenvolvido em React Native com Expo para cadastrar gastos, organizar despesas pendentes e armazenar tudo localmente usando SQLite.
+Um aplicativo criado para estudos e aplicação de conhecimento academicos. 
 
 ## Funcionalidades
 
