@@ -8,28 +8,47 @@ export default function AddExpenseScreen({ navigation }) {
   const [categoria, setCategoria] = useState('');
   const [valor, setValor] = useState('');
   const [data, setData] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (saving) {
+      return;
+    }
+
+    const descricaoTratada = descricao.trim();
+    const categoriaTratada = categoria.trim();
+    const valorTratado = valor.trim();
+    const dataTratada = data.trim();
+
     // Verifica se algum campo está vazio (retirando espaços em branco nas pontas)
-    if (!descricao.trim() || !categoria.trim() || !valor.trim() || !data.trim()) {
-      Alert.alert('Erro de Validação', 'Por favor, preencha todos os campos obrigatórios.');
+    if (!descricaoTratada || !categoriaTratada || !valorTratado || !dataTratada) {
+      Alert.alert('Erro de Validacao', 'Por favor, preencha todos os campos obrigatorios.');
       return;
     }
 
     // Converte o valor digitado para número, permitindo que o usuário use vírgula ou ponto
-    const numericValue = parseFloat(valor.replace(',', '.'));
+    const numericValue = parseFloat(valorTratado.replace(',', '.'));
 
     // Verifica se o valor é um número válido e maior que zero
     if (isNaN(numericValue) || numericValue <= 0) {
-      Alert.alert('Erro de Validação', 'O valor deve ser numérico e maior que zero.');
+      Alert.alert('Erro de Validacao', 'O valor deve ser numerico e maior que zero.');
       return;
     }
 
-    // Salva no banco de dados SQLite
-    addExpense(descricao, categoria, numericValue, data);
+    try {
+      setSaving(true);
 
-    // Retorna automaticamente para a Tela Inicial
-    navigation.goBack();
+      // Salva no banco de dados SQLite
+      await addExpense(descricaoTratada, categoriaTratada, numericValue, dataTratada);
+
+      // Retorna automaticamente para a Tela Inicial
+      navigation.goBack();
+    } catch (error) {
+      console.error('Erro ao salvar gasto:', error);
+      Alert.alert('Erro', 'Nao foi possivel salvar este gasto.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -67,8 +86,14 @@ export default function AddExpenseScreen({ navigation }) {
         onChangeText={setData}
       />
 
-      <TouchableOpacity style={globalStyles.button} onPress={handleSave}>
-        <Text style={globalStyles.buttonText}>Salvar Gasto</Text>
+      <TouchableOpacity
+        style={[globalStyles.button, saving && globalStyles.buttonDisabled]}
+        onPress={handleSave}
+        disabled={saving}
+      >
+        <Text style={globalStyles.buttonText}>
+          {saving ? 'Salvando...' : 'Salvar Gasto'}
+        </Text>
       </TouchableOpacity>
     </View>
   );

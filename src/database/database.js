@@ -1,11 +1,20 @@
 import * as SQLite from 'expo-sqlite';
 
-// Cria ou abre o banco de dados local
-const db = SQLite.openDatabaseSync('gastos.db');
+let databasePromise;
+
+const getDatabase = async () => {
+  if (!databasePromise) {
+    databasePromise = SQLite.openDatabaseAsync('gastos.db');
+  }
+
+  return databasePromise;
+};
 
 // Função para criar a tabela caso ela ainda não exista no celular
-export const initDB = () => {
-  db.execSync(`
+export const initDB = async () => {
+  const db = await getDatabase();
+
+  await db.execAsync(`
     CREATE TABLE IF NOT EXISTS gastos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       descricao TEXT NOT NULL,
@@ -17,28 +26,31 @@ export const initDB = () => {
 };
 
 // Função para inserir um registro na tabela
-export const addExpense = (descricao, categoria, valor, data) => {
-  const statement = db.prepareSync(
-    'INSERT INTO gastos (descricao, categoria, valor, data) VALUES ($descricao, $categoria, $valor, $data)'
+export const addExpense = async (descricao, categoria, valor, data) => {
+  const db = await getDatabase();
+
+  return db.runAsync(
+    'INSERT INTO gastos (descricao, categoria, valor, data) VALUES ($descricao, $categoria, $valor, $data)',
+    {
+      $descricao: descricao,
+      $categoria: categoria,
+      $valor: valor,
+      $data: data,
+    }
   );
-  
-  const result = statement.executeSync({
-    $descricao: descricao,
-    $categoria: categoria,
-    $valor: valor,
-    $data: data,
-  });
-  
-  return result.lastInsertRowId;
 };
 
 // Função para recuperar todos os dados cadastrados
-export const getExpenses = () => {
+export const getExpenses = async () => {
+  const db = await getDatabase();
+
   // Retorna a lista de gastos, com os mais recentes primeiro
-  return db.getAllSync('SELECT * FROM gastos ORDER BY id DESC');
+  return db.getAllAsync('SELECT * FROM gastos ORDER BY id DESC');
 };
+
 // Função para deletar um registro específico
-export const deleteExpense = (id) => {
-  const statement = db.prepareSync('DELETE FROM gastos WHERE id = $id');
-  statement.executeSync({ $id: id });
+export const deleteExpense = async (id) => {
+  const db = await getDatabase();
+
+  return db.runAsync('DELETE FROM gastos WHERE id = $id', { $id: id });
 };

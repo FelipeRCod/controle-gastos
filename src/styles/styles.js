@@ -6,6 +6,25 @@ export const globalStyles = StyleSheet.create({
     backgroundColor: '#F5F7FA',
     padding: 20,
   },
+  centeredContainer: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  loadingText: {
+    color: '#666666',
+    fontSize: 14,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: '#D9534F',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
   input: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -28,6 +47,34 @@ export const globalStyles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  totalCard: {
+    backgroundColor: '#28A745',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  totalLabel: {
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+  totalValue: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  listLoadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    color: '#666666',
+    marginTop: 20,
+    textAlign: 'center',
   },
   listItem: {
     backgroundColor: '#FFFFFF',
