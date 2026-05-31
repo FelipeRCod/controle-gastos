@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import ExpenseItem from '../components/ExpenseItem';
 import {
@@ -17,7 +18,7 @@ import {
   getCategoryByKey,
   normalizeCategoryKey,
 } from '../constants/categories';
-import { deleteExpense, getExpenses } from '../database/database';
+import { getExpenses, moveExpenseToTrash } from '../database/database';
 import { useAppTheme } from '../theme/ThemeContext';
 import { formatCurrency } from '../utils/currency';
 import {
@@ -107,6 +108,8 @@ export default function HomeScreen({ navigation }) {
   const [periodModal, setPeriodModal] = useState(null);
   const [draftPeriodConfig, setDraftPeriodConfig] = useState(createInitialPeriodConfig);
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [filtersVisible, setFiltersVisible] = useState(false);
+  const [totalHidden, setTotalHidden] = useState(false);
 
   const loadData = useCallback(async (canUpdate = () => true) => {
     try {
@@ -147,7 +150,7 @@ export default function HomeScreen({ navigation }) {
   const handleDelete = (id) => {
     Alert.alert(
       'Excluir Gasto',
-      'Tem certeza que deseja apagar este registro?',
+      'Deseja mesmo excluir este item? Ele ficara na Lixeira por 30 dias.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -155,13 +158,27 @@ export default function HomeScreen({ navigation }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              await deleteExpense(id);
+              await moveExpenseToTrash(id);
               await loadData();
             } catch (error) {
               console.error('Erro ao excluir gasto:', error);
               Alert.alert('Erro', 'Nao foi possivel excluir este gasto.');
             }
           },
+        },
+      ]
+    );
+  };
+
+  const handleEdit = (item) => {
+    Alert.alert(
+      'Editar Gasto',
+      'Deseja mesmo editar este item?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Editar',
+          onPress: () => navigation.navigate('EditExpense', { item }),
         },
       ]
     );
@@ -248,86 +265,112 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.totalCard}>
-        <Text style={styles.totalLabel}>{totalTitle}</Text>
-        <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
+        <View style={styles.totalHeaderRow}>
+          <Text style={styles.totalLabel}>{totalTitle}</Text>
+          <View style={styles.totalHeaderActions}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.iconGhostButton}
+              onPress={() => setTotalHidden((current) => !current)}
+            >
+              <Ionicons
+                name={totalHidden ? 'eye-off' : 'eye'}
+                size={20}
+                color={colors.jade}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.iconGhostButton}
+              onPress={() => setFiltersVisible((current) => !current)}
+            >
+              <Ionicons name="filter" size={20} color={colors.jade} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <Text style={styles.totalValue}>
+          {totalHidden ? 'R$ •••••' : formatCurrency(total)}
+        </Text>
         <Text style={styles.totalHint}>
           Gastos manuais e contas ja pagas aparecem conforme periodo e categoria.
         </Text>
         <Text style={styles.totalHint}>{periodHint}</Text>
-      </View>
 
-      <View style={styles.filterBlock}>
-        <Text style={styles.filterTitle}>Periodo</Text>
-        <View style={styles.filterRow}>
-          {PERIODS.map((period) => (
-            <TouchableOpacity
-              key={period.key}
-              activeOpacity={0.8}
-              onPress={() => openPeriodFilter(period.key)}
-              style={[
-                styles.filterChip,
-                periodFilter === period.key && styles.filterChipActive,
-              ]}
+        {filtersVisible && (
+          <View style={styles.filterBlockInline}>
+            <Text style={styles.filterTitle}>Periodo</Text>
+            <View style={styles.filterRow}>
+              {PERIODS.map((period) => (
+                <TouchableOpacity
+                  key={period.key}
+                  activeOpacity={0.8}
+                  onPress={() => openPeriodFilter(period.key)}
+                  style={[
+                    styles.filterChip,
+                    periodFilter === period.key && styles.filterChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      periodFilter === period.key && styles.filterChipTextActive,
+                    ]}
+                  >
+                    {period.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.filterTitle}>Categoria</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScrollContent}
             >
-              <Text
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setCategoryFilter('all')}
                 style={[
-                  styles.filterChipText,
-                  periodFilter === period.key && styles.filterChipTextActive,
+                  styles.filterChip,
+                  categoryFilter === 'all' && styles.filterChipActive,
                 ]}
               >
-                {period.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    categoryFilter === 'all' && styles.filterChipTextActive,
+                  ]}
+                >
+                  Todas
+                </Text>
+              </TouchableOpacity>
 
-        <Text style={styles.filterTitle}>Categoria</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScrollContent}
-        >
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setCategoryFilter('all')}
-            style={[
-              styles.filterChip,
-              categoryFilter === 'all' && styles.filterChipActive,
-            ]}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                categoryFilter === 'all' && styles.filterChipTextActive,
-              ]}
-            >
-              Todas
-            </Text>
-          </TouchableOpacity>
-
-          {EXPENSE_CATEGORIES.map((category) => (
-            <TouchableOpacity
-              key={category.key}
-              activeOpacity={0.8}
-              onPress={() => setCategoryFilter(category.key)}
-              style={[
-                styles.filterChip,
-                categoryFilter === category.key && styles.filterChipActive,
-                categoryFilter === category.key && { borderColor: category.color },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  categoryFilter === category.key && styles.filterChipTextActive,
-                  categoryFilter === category.key && { color: category.color },
-                ]}
-              >
-                {category.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+              {EXPENSE_CATEGORIES.map((category) => (
+                <TouchableOpacity
+                  key={category.key}
+                  activeOpacity={0.8}
+                  onPress={() => setCategoryFilter(category.key)}
+                  style={[
+                    styles.filterChip,
+                    categoryFilter === category.key && styles.filterChipActive,
+                    categoryFilter === category.key && { borderColor: category.color },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      categoryFilter === category.key && styles.filterChipTextActive,
+                      categoryFilter === category.key && { color: category.color },
+                    ]}
+                  >
+                    {category.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       <Modal
@@ -491,7 +534,11 @@ export default function HomeScreen({ navigation }) {
           data={filteredExpenses}
           keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
-            <ExpenseItem item={item} onLongPress={() => handleDelete(item.id)} />
+            <ExpenseItem
+              item={item}
+              onDelete={() => handleDelete(item.id)}
+              onEdit={() => handleEdit(item)}
+            />
           )}
           ListEmptyComponent={
             <Text style={styles.emptyText}>Nao existem custos nesse periodo.</Text>

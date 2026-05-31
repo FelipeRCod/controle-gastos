@@ -7,7 +7,7 @@ const menuItems = [
   { icon: 'home', label: 'Tela inicial', route: 'Start' },
   { icon: 'wallet', label: 'Controle de Gastos', route: 'Home' },
   { icon: 'alert-circle', label: 'Controle de Despesas', route: 'Payables' },
-  { icon: 'contrast', label: 'Tema', route: 'Settings' },
+  { icon: 'trash', label: 'Lixeira', route: 'Trash' },
   { icon: 'settings', label: 'Configuração', route: 'Settings' },
 ];
 

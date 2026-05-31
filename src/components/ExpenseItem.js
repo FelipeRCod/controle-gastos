@@ -1,17 +1,18 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getCategoryByKey } from '../constants/categories';
+import SwipeableActionItem from './SwipeableActionItem';
 import { useAppTheme } from '../theme/ThemeContext';
 import { formatCurrency } from '../utils/currency';
 
-export default function ExpenseItem({ item, onLongPress }) {
+export default function ExpenseItem({ item, onDelete, onEdit }) {
   const { styles } = useAppTheme();
   const value = Number(item.valor || 0);
   const category = getCategoryByKey(item.categoria_base);
 
   return (
-    <TouchableOpacity onLongPress={onLongPress} activeOpacity={0.7}>
+    <SwipeableActionItem onDelete={onDelete} onEdit={onEdit}>
       <View style={[styles.listItem, { borderLeftColor: category.color }]}>
         <View style={styles.itemRow}>
           <View style={styles.itemTitleBox}>
@@ -29,6 +30,6 @@ export default function ExpenseItem({ item, onLongPress }) {
           <Text style={styles.itemDate}>{item.data}</Text>
         </View>
       </View>
-    </TouchableOpacity>
+    </SwipeableActionItem>
   );
 }

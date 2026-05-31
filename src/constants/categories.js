@@ -11,13 +11,13 @@ export const EXPENSE_CATEGORIES = [
     color: '#00A86B',
     icon: 'home',
     key: CATEGORY_KEYS.DOMESTIC,
-    label: 'Custo doméstico',
+    label: 'Custos Domésticos',
   },
   {
     color: '#F97316',
     icon: 'restaurant',
     key: CATEGORY_KEYS.FOOD,
-    label: 'Custos alimentação',
+    label: 'Custo Alimentação',
   },
   {
     color: '#3B82F6',

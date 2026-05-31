@@ -29,6 +29,13 @@ export default function SettingsScreen({ navigation }) {
         </Text>
       </View>
 
+      <View style={styles.settingsCard}>
+        <Text style={styles.menuTitle}>Configuracoes futuras</Text>
+        <Text style={styles.menuDescription}>
+          As demais configuracoes ainda estao em processo de desenvolvimento.
+        </Text>
+      </View>
+
       <TouchableOpacity
         style={styles.outlineButton}
         onPress={() => navigation.navigate('Tutorial')}

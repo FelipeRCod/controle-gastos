@@ -55,7 +55,7 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
     backgroundColor: themeColors.splashBackground,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 0,
+    padding: 24,
   },
   splashImage: {
     width: '100%',
@@ -64,6 +64,23 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
   splashLoader: {
     bottom: 44,
     position: 'absolute',
+  },
+  splashPulse: {
+    alignItems: 'center',
+    height: 132,
+    justifyContent: 'center',
+    width: 132,
+  },
+  splashPulseLogo: {
+    height: 132,
+    width: 132,
+  },
+  splashTitle: {
+    color: '#082119',
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 20,
+    textAlign: 'center',
   },
   loadingText: {
     color: themeColors.muted,
@@ -156,13 +173,43 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
     fontSize: 12,
     fontWeight: '800',
   },
+  dangerButton: {
+    backgroundColor: themeColors.danger,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  dangerButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
   totalCard: {
     backgroundColor: themeColors.surface,
     borderColor: themeColors.border,
     borderWidth: 1,
-    padding: 18,
+    padding: 14,
     borderRadius: 8,
-    marginBottom: 15,
+    marginBottom: 10,
+  },
+  totalHeaderRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+  },
+  totalHeaderActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconGhostButton: {
+    alignItems: 'center',
+    borderColor: themeColors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
   },
   totalLabel: {
     color: themeColors.muted,
@@ -276,7 +323,7 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
   },
   brandContainer: {
     alignItems: 'center',
-    gap: 12,
+    gap: 2,
   },
   logoFrame: {
     width: 74,
@@ -320,6 +367,7 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
     color: themeColors.text,
     fontSize: 14,
     fontWeight: '700',
+    marginTop: -3,
     textAlign: 'center',
   },
   menuHeader: {
@@ -453,8 +501,16 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
   },
   startHeader: {
     alignItems: 'center',
-    marginBottom: 26,
-    marginTop: 8,
+    marginBottom: 14,
+    marginTop: 0,
+  },
+  startIntroText: {
+    color: themeColors.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 28,
+    textAlign: 'left',
+    width: '100%',
   },
   startActions: {
     gap: 14,
@@ -553,6 +609,12 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
     marginBottom: 12,
     padding: 12,
   },
+  filterBlockInline: {
+    borderTopColor: themeColors.border,
+    borderTopWidth: 1,
+    marginTop: 12,
+    paddingTop: 12,
+  },
   filterTitle: {
     color: themeColors.text,
     fontSize: 13,
@@ -627,6 +689,47 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
     minWidth: '30%',
     paddingHorizontal: 8,
     paddingVertical: 9,
+  },
+  swipeItemShell: {
+    marginBottom: 0,
+  },
+  swipeActionsBack: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  swipeAction: {
+    alignItems: 'center',
+    borderRadius: 8,
+    height: '86%',
+    justifyContent: 'center',
+    width: 78,
+  },
+  swipeEditAction: {
+    backgroundColor: themeColors.jadeSoft,
+  },
+  swipeDeleteAction: {
+    backgroundColor: themeColors.danger,
+  },
+  swipeItemFront: {
+    backgroundColor: themeColors.background,
+  },
+  trashItem: {
+    backgroundColor: themeColors.surface,
+    borderColor: themeColors.border,
+    borderLeftColor: themeColors.danger,
+    borderLeftWidth: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 12,
+    padding: 15,
+  },
+  trashActions: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-end',
+    marginTop: 12,
   },
   categoryGrid: {
     flexDirection: 'row',

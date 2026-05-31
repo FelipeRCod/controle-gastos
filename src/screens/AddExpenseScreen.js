@@ -10,18 +10,24 @@ import {
 } from 'react-native';
 import CategoryPicker from '../components/CategoryPicker';
 import { CATEGORY_KEYS } from '../constants/categories';
-import { addExpense } from '../database/database';
+import { addExpense, updateExpense } from '../database/database';
 import { useAppTheme } from '../theme/ThemeContext';
 import { parseCurrencyValue } from '../utils/currency';
-import { isValidBrazilianDate } from '../utils/dateFilters';
+import { isPeriodAboveToday, isValidBrazilianDate } from '../utils/dateFilters';
 
-export default function AddExpenseScreen({ navigation }) {
+export default function AddExpenseScreen({ navigation, route }) {
   const { colors, styles } = useAppTheme();
-  const [descricao, setDescricao] = useState('');
-  const [categoriaBase, setCategoriaBase] = useState('');
-  const [categoriaOutros, setCategoriaOutros] = useState('');
-  const [valor, setValor] = useState('');
-  const [data, setData] = useState('');
+  const editingItem = route?.params?.item;
+  const isEditing = Boolean(editingItem);
+  const [descricao, setDescricao] = useState(editingItem?.descricao || '');
+  const [categoriaBase, setCategoriaBase] = useState(editingItem?.categoria_base || '');
+  const [categoriaOutros, setCategoriaOutros] = useState(
+    editingItem?.categoria_base === CATEGORY_KEYS.OTHER ? editingItem?.categoria || '' : ''
+  );
+  const [valor, setValor] = useState(
+    editingItem ? String(editingItem.valor).replace('.', ',') : ''
+  );
+  const [data, setData] = useState(editingItem?.data || '');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -62,15 +68,32 @@ export default function AddExpenseScreen({ navigation }) {
       return;
     }
 
+    if (isPeriodAboveToday('day', { dayDate: dataTratada })) {
+      Alert.alert('Data Invalida', 'Periodo Acima da Data Atual');
+      return;
+    }
+
     try {
       setSaving(true);
-      await addExpense(
-        descricaoTratada,
-        categoriaBase,
-        categoriaTratada,
-        numericValue,
-        dataTratada
-      );
+
+      if (isEditing) {
+        await updateExpense(editingItem.id, {
+          categoria: categoriaTratada,
+          categoriaBase,
+          data: dataTratada,
+          descricao: descricaoTratada,
+          valor: numericValue,
+        });
+      } else {
+        await addExpense(
+          descricaoTratada,
+          categoriaBase,
+          categoriaTratada,
+          numericValue,
+          dataTratada
+        );
+      }
+
       navigation.goBack();
     } catch (error) {
       console.error('Erro ao salvar gasto:', error);
@@ -89,9 +112,13 @@ export default function AddExpenseScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.formScrollContent}
       >
-        <Text style={styles.screenTitle}>Cadastrar gasto</Text>
+        <Text style={styles.screenTitle}>
+          {isEditing ? 'Editar gasto' : 'Cadastrar gasto'}
+        </Text>
         <Text style={styles.screenSubtitle}>
-          Registre um gasto que ja aconteceu.
+          {isEditing
+            ? 'Altere as informacoes e confirme a edicao.'
+            : 'Registre um gasto que ja aconteceu.'}
         </Text>
 
         <Text style={styles.label}>Descricao do Gasto</Text>
@@ -152,9 +179,17 @@ export default function AddExpenseScreen({ navigation }) {
           disabled={saving}
         >
           <Text style={styles.buttonText}>
-            {saving ? 'Salvando...' : 'Salvar Gasto'}
+            {saving
+              ? 'Salvando...'
+              : isEditing ? 'Confirmar edição' : 'Salvar Gasto'}
           </Text>
         </TouchableOpacity>
+
+        {isEditing && (
+          <TouchableOpacity style={styles.outlineButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.outlineButtonText}>Cancelar</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

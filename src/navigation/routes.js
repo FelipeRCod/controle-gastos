@@ -11,6 +11,7 @@ import OnboardingScreen from '../screens/OnboardingScreen';
 import PayablesScreen from '../screens/PayablesScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import StartScreen from '../screens/StartScreen';
+import TrashScreen from '../screens/TrashScreen';
 import HamburgerMenu, { MenuToggleIcon } from '../components/HamburgerMenu';
 import HomeFloatingButton from '../components/HomeFloatingButton';
 import { useAppTheme } from '../theme/ThemeContext';
@@ -144,7 +145,7 @@ export default function Routes() {
           <Stack.Screen
             name="Start"
             component={StartScreen}
-            options={{ title: 'Jade Controle de Gastos' }}
+            options={{ title: 'Dashboard' }}
           />
           <Stack.Screen
             name="Home"
@@ -157,6 +158,11 @@ export default function Routes() {
             options={{ title: 'Novo Gasto' }}
           />
           <Stack.Screen
+            name="EditExpense"
+            component={AddExpenseScreen}
+            options={{ title: 'Editar Gasto' }}
+          />
+          <Stack.Screen
             name="Payables"
             component={PayablesScreen}
             options={{ title: 'Controle de Despesas' }}
@@ -165,6 +171,16 @@ export default function Routes() {
             name="AddPayable"
             component={AddPayableScreen}
             options={{ title: 'Nova Despesa' }}
+          />
+          <Stack.Screen
+            name="EditPayable"
+            component={AddPayableScreen}
+            options={{ title: 'Editar Despesa' }}
+          />
+          <Stack.Screen
+            name="Trash"
+            component={TrashScreen}
+            options={{ title: 'Lixeira' }}
           />
           <Stack.Screen
             name="Settings"

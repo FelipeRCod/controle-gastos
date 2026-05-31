@@ -26,7 +26,7 @@ export default function StartScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.startHeader}>
         <BrandLogo size="large" />
-        <Text style={styles.screenSubtitle}>
+        <Text style={styles.startIntroText}>
           Escolha uma area para organizar seus gastos e despesas.
         </Text>
       </View>

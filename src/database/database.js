@@ -7,7 +7,8 @@ import {
 } from '../constants/categories';
 
 let databasePromise;
-const ONBOARDING_VERSION = '2';
+const ONBOARDING_VERSION = '3';
+const TRASH_RETENTION_DAYS = 30;
 
 const getDatabase = async () => {
   if (!databasePromise) {
@@ -47,12 +48,22 @@ export const initDB = async () => {
       chave TEXT PRIMARY KEY NOT NULL,
       valor TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS lixeira (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      origem TEXT NOT NULL,
+      registro_id INTEGER NOT NULL,
+      payload_json TEXT NOT NULL,
+      excluido_em TEXT NOT NULL,
+      expira_em TEXT NOT NULL
+    );
   `);
 
   await ensureColumn(db, 'gastos', 'categoria_base', "TEXT NOT NULL DEFAULT 'other'");
   await ensureColumn(db, 'contas_pagar', 'categoria_base', "TEXT NOT NULL DEFAULT 'other'");
   await backfillCategoryBase(db, 'gastos');
   await backfillCategoryBase(db, 'contas_pagar');
+  await purgeExpiredTrashItems();
 };
 
 const ensureColumn = async (db, tableName, columnName, columnDefinition) => {
@@ -115,10 +126,10 @@ export const getExpenses = async () => {
 };
 
 // Função para deletar um registro específico
-export const deleteExpense = async (id) => {
+export const getExpenseById = async (id) => {
   const db = await getDatabase();
 
-  return db.runAsync('DELETE FROM gastos WHERE id = $id', { $id: id });
+  return db.getFirstAsync('SELECT * FROM gastos WHERE id = $id', { $id: id });
 };
 
 export const addPayable = async (descricao, categoriaBase, categoria, valor, dataVencimento) => {
@@ -149,6 +160,12 @@ export const getPayables = async () => {
       CASE status WHEN 'pendente' THEN 0 ELSE 1 END,
       id DESC
   `);
+};
+
+export const getPayableById = async (id) => {
+  const db = await getDatabase();
+
+  return db.getFirstAsync('SELECT * FROM contas_pagar WHERE id = $id', { $id: id });
 };
 
 export const markPayableAsPaid = async (id) => {
@@ -194,6 +211,248 @@ export const markPayableAsPaid = async (id) => {
   });
 
   return paidExpenseId;
+};
+
+const getTrashDates = () => {
+  const deletedAt = new Date();
+  const expiresAt = new Date(deletedAt);
+  expiresAt.setDate(expiresAt.getDate() + TRASH_RETENTION_DAYS);
+
+  return {
+    deletedAt: deletedAt.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+  };
+};
+
+const insertTrashItem = (tx, origem, registroId, payload) => {
+  const { deletedAt, expiresAt } = getTrashDates();
+
+  return tx.runAsync(
+    `INSERT INTO lixeira
+      (origem, registro_id, payload_json, excluido_em, expira_em)
+      VALUES ($origem, $registroId, $payloadJson, $excluidoEm, $expiraEm)`,
+    {
+      $origem: origem,
+      $registroId: registroId,
+      $payloadJson: JSON.stringify(payload),
+      $excluidoEm: deletedAt,
+      $expiraEm: expiresAt,
+    }
+  );
+};
+
+export const moveExpenseToTrash = async (id) => {
+  const db = await getDatabase();
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const expense = await tx.getFirstAsync(
+      'SELECT * FROM gastos WHERE id = $id',
+      { $id: id }
+    );
+
+    if (!expense) {
+      throw new Error('Gasto nao encontrado.');
+    }
+
+    await insertTrashItem(tx, 'gasto', expense.id, { expense });
+    await tx.runAsync('DELETE FROM gastos WHERE id = $id', { $id: id });
+  });
+};
+
+export const movePayableToTrash = async (id) => {
+  const db = await getDatabase();
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const payable = await tx.getFirstAsync(
+      'SELECT * FROM contas_pagar WHERE id = $id',
+      { $id: id }
+    );
+
+    if (!payable) {
+      throw new Error('Despesa nao encontrada.');
+    }
+
+    const linkedExpense = payable.expense_id
+      ? await tx.getFirstAsync(
+        'SELECT * FROM gastos WHERE id = $id',
+        { $id: payable.expense_id }
+      )
+      : null;
+
+    await insertTrashItem(tx, 'despesa', payable.id, { linkedExpense, payable });
+
+    if (linkedExpense) {
+      await tx.runAsync('DELETE FROM gastos WHERE id = $id', { $id: linkedExpense.id });
+    }
+
+    await tx.runAsync('DELETE FROM contas_pagar WHERE id = $id', { $id: id });
+  });
+};
+
+const insertExpenseFromPayload = (tx, expense) => tx.runAsync(
+  `INSERT INTO gastos
+    (id, descricao, categoria, categoria_base, valor, data)
+    VALUES ($id, $descricao, $categoria, $categoriaBase, $valor, $data)`,
+  {
+    $id: expense.id,
+    $descricao: expense.descricao,
+    $categoria: expense.categoria,
+    $categoriaBase: normalizeCategoryKey(expense.categoria_base),
+    $valor: expense.valor,
+    $data: expense.data,
+  }
+);
+
+const insertPayableFromPayload = (tx, payable) => tx.runAsync(
+  `INSERT INTO contas_pagar
+    (id, descricao, categoria, categoria_base, valor, data_vencimento, status, data_pagamento, expense_id)
+    VALUES ($id, $descricao, $categoria, $categoriaBase, $valor, $dataVencimento, $status, $dataPagamento, $expenseId)`,
+  {
+    $id: payable.id,
+    $descricao: payable.descricao,
+    $categoria: payable.categoria,
+    $categoriaBase: normalizeCategoryKey(payable.categoria_base),
+    $valor: payable.valor,
+    $dataVencimento: payable.data_vencimento,
+    $status: payable.status,
+    $dataPagamento: payable.data_pagamento,
+    $expenseId: payable.expense_id,
+  }
+);
+
+export const getTrashItems = async () => {
+  const db = await getDatabase();
+  await purgeExpiredTrashItems();
+
+  const rows = await db.getAllAsync('SELECT * FROM lixeira ORDER BY id DESC');
+
+  return rows.map((row) => ({
+    ...row,
+    payload: JSON.parse(row.payload_json),
+  }));
+};
+
+export const restoreTrashItem = async (id) => {
+  const db = await getDatabase();
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const trashItem = await tx.getFirstAsync(
+      'SELECT * FROM lixeira WHERE id = $id',
+      { $id: id }
+    );
+
+    if (!trashItem) {
+      throw new Error('Item da lixeira nao encontrado.');
+    }
+
+    const payload = JSON.parse(trashItem.payload_json);
+
+    if (trashItem.origem === 'gasto') {
+      await insertExpenseFromPayload(tx, payload.expense);
+    }
+
+    if (trashItem.origem === 'despesa') {
+      if (payload.linkedExpense) {
+        await insertExpenseFromPayload(tx, payload.linkedExpense);
+      }
+
+      await insertPayableFromPayload(tx, payload.payable);
+    }
+
+    await tx.runAsync('DELETE FROM lixeira WHERE id = $id', { $id: id });
+  });
+};
+
+export const deleteTrashItemPermanently = async (id) => {
+  const db = await getDatabase();
+
+  return db.runAsync('DELETE FROM lixeira WHERE id = $id', { $id: id });
+};
+
+export const purgeExpiredTrashItems = async () => {
+  const db = await getDatabase();
+
+  return db.runAsync(
+    'DELETE FROM lixeira WHERE expira_em <= $now',
+    { $now: new Date().toISOString() }
+  );
+};
+
+export const updateExpense = async (id, dados) => {
+  const db = await getDatabase();
+  const normalizedCategoryBase = normalizeCategoryKey(dados.categoriaBase);
+  const displayCategory = getCategoryLabel(normalizedCategoryBase, dados.categoria);
+
+  return db.runAsync(
+    `UPDATE gastos
+     SET descricao = $descricao,
+         categoria = $categoria,
+         categoria_base = $categoriaBase,
+         valor = $valor,
+         data = $data
+     WHERE id = $id`,
+    {
+      $descricao: dados.descricao,
+      $categoria: displayCategory,
+      $categoriaBase: normalizedCategoryBase,
+      $valor: dados.valor,
+      $data: dados.data,
+      $id: id,
+    }
+  );
+};
+
+export const updatePayable = async (id, dados) => {
+  const db = await getDatabase();
+  const normalizedCategoryBase = normalizeCategoryKey(dados.categoriaBase);
+  const displayCategory = getCategoryLabel(normalizedCategoryBase, dados.categoria);
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const payable = await tx.getFirstAsync(
+      'SELECT * FROM contas_pagar WHERE id = $id',
+      { $id: id }
+    );
+
+    if (!payable) {
+      throw new Error('Despesa nao encontrada.');
+    }
+
+    await tx.runAsync(
+      `UPDATE contas_pagar
+       SET descricao = $descricao,
+           categoria = $categoria,
+           categoria_base = $categoriaBase,
+           valor = $valor,
+           data_vencimento = $dataVencimento
+       WHERE id = $id`,
+      {
+        $descricao: dados.descricao,
+        $categoria: displayCategory,
+        $categoriaBase: normalizedCategoryBase,
+        $valor: dados.valor,
+        $dataVencimento: dados.dataVencimento,
+        $id: id,
+      }
+    );
+
+    if (payable.status === 'paga' && payable.expense_id) {
+      await tx.runAsync(
+        `UPDATE gastos
+         SET descricao = $descricao,
+             categoria = $categoria,
+             categoria_base = $categoriaBase,
+             valor = $valor
+         WHERE id = $id`,
+        {
+          $descricao: dados.descricao,
+          $categoria: displayCategory,
+          $categoriaBase: normalizedCategoryBase,
+          $valor: dados.valor,
+          $id: payable.expense_id,
+        }
+      );
+    }
+  });
 };
 
 export const hasSeenOnboarding = async () => {

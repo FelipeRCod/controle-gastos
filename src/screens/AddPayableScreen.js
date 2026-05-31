@@ -10,18 +10,24 @@ import {
 } from 'react-native';
 import CategoryPicker from '../components/CategoryPicker';
 import { CATEGORY_KEYS } from '../constants/categories';
-import { addPayable } from '../database/database';
+import { addPayable, updatePayable } from '../database/database';
 import { useAppTheme } from '../theme/ThemeContext';
 import { parseCurrencyValue } from '../utils/currency';
 import { isValidBrazilianDate } from '../utils/dateFilters';
 
-export default function AddPayableScreen({ navigation }) {
+export default function AddPayableScreen({ navigation, route }) {
   const { colors, styles } = useAppTheme();
-  const [descricao, setDescricao] = useState('');
-  const [categoriaBase, setCategoriaBase] = useState('');
-  const [categoriaOutros, setCategoriaOutros] = useState('');
-  const [valor, setValor] = useState('');
-  const [dataVencimento, setDataVencimento] = useState('');
+  const editingItem = route?.params?.item;
+  const isEditing = Boolean(editingItem);
+  const [descricao, setDescricao] = useState(editingItem?.descricao || '');
+  const [categoriaBase, setCategoriaBase] = useState(editingItem?.categoria_base || '');
+  const [categoriaOutros, setCategoriaOutros] = useState(
+    editingItem?.categoria_base === CATEGORY_KEYS.OTHER ? editingItem?.categoria || '' : ''
+  );
+  const [valor, setValor] = useState(
+    editingItem ? String(editingItem.valor).replace('.', ',') : ''
+  );
+  const [dataVencimento, setDataVencimento] = useState(editingItem?.data_vencimento || '');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -64,13 +70,25 @@ export default function AddPayableScreen({ navigation }) {
 
     try {
       setSaving(true);
-      await addPayable(
-        descricaoTratada,
-        categoriaBase,
-        categoriaTratada,
-        numericValue,
-        dataTratada
-      );
+
+      if (isEditing) {
+        await updatePayable(editingItem.id, {
+          categoria: categoriaTratada,
+          categoriaBase,
+          dataVencimento: dataTratada,
+          descricao: descricaoTratada,
+          valor: numericValue,
+        });
+      } else {
+        await addPayable(
+          descricaoTratada,
+          categoriaBase,
+          categoriaTratada,
+          numericValue,
+          dataTratada
+        );
+      }
+
       navigation.goBack();
     } catch (error) {
       console.error('Erro ao cadastrar despesa:', error);
@@ -89,9 +107,13 @@ export default function AddPayableScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.formScrollContent}
       >
-        <Text style={styles.screenTitle}>Cadastrar despesa</Text>
+        <Text style={styles.screenTitle}>
+          {isEditing ? 'Editar despesa' : 'Cadastrar despesa'}
+        </Text>
         <Text style={styles.screenSubtitle}>
-          Ela fica pendente e so entra nos gastos quando for paga.
+          {isEditing
+            ? 'Altere as informacoes e confirme a edicao.'
+            : 'Ela fica pendente e so entra nos gastos quando for paga.'}
         </Text>
 
         <Text style={styles.label}>Descricao da Despesa</Text>
@@ -152,9 +174,17 @@ export default function AddPayableScreen({ navigation }) {
           disabled={saving}
         >
           <Text style={styles.buttonText}>
-            {saving ? 'Salvando...' : 'Salvar Despesa'}
+            {saving
+              ? 'Salvando...'
+              : isEditing ? 'Confirmar edição' : 'Salvar Despesa'}
           </Text>
         </TouchableOpacity>
+
+        {isEditing && (
+          <TouchableOpacity style={styles.outlineButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.outlineButtonText}>Cancelar</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

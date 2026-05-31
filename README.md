@@ -8,7 +8,9 @@ Aplicativo mobile desenvolvido em React Native com Expo para cadastrar gastos, o
 - Tutorial inicial versionado para a entrega atual.
 - Tela inicial com logo e atalhos para Controle de Gastos e Controle de Despesas.
 - Menu hamburger no header com acesso a tela inicial, gastos, controle de despesas, tema e configuracao.
+- Lixeira para recuperar ou excluir definitivamente itens apagados por ate 30 dias.
 - Listagem de gastos cadastrados com `FlatList`.
+- Edicao e exclusao de gastos/despesas por gesto de arrastar.
 - Cadastro de novo gasto com descricao, categoria selecionavel, valor e data.
 - Filtros de gastos por todos, dia, semana, mes, ano e categoria.
 - Valores aceitam reais inteiros ou centavos com virgula/ponto, como `300`, `300,25` ou `300.25`.
@@ -48,6 +50,7 @@ src/
     HomeFloatingButton.js
     HamburgerMenu.js
     PayableItem.js
+    SwipeableActionItem.js
     ThemeSelector.js
   constants/
     categories.js
@@ -64,6 +67,7 @@ src/
     SettingsScreen.js
     SplashScreen.js
     StartScreen.js
+    TrashScreen.js
   styles/
     styles.js
   theme/
@@ -139,5 +143,18 @@ Tabela de configuracoes:
 CREATE TABLE IF NOT EXISTS app_settings (
   chave TEXT PRIMARY KEY NOT NULL,
   valor TEXT NOT NULL
+);
+```
+
+Tabela da lixeira:
+
+```sql
+CREATE TABLE IF NOT EXISTS lixeira (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  origem TEXT NOT NULL,
+  registro_id INTEGER NOT NULL,
+  payload_json TEXT NOT NULL,
+  excluido_em TEXT NOT NULL,
+  expira_em TEXT NOT NULL
 );
 ```
