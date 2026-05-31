@@ -1,12 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import Routes from './src/navigation/routes';
-import { initDB } from './src/database/database';
+import {
+  getThemePreference,
+  hasSeenOnboarding,
+  initDB,
+  setOnboardingSeen,
+} from './src/database/database';
+import OnboardingScreen from './src/screens/OnboardingScreen';
+import SplashScreen from './src/screens/SplashScreen';
 import { globalStyles } from './src/styles/styles';
+import { ThemeProvider } from './src/theme/ThemeContext';
 
 export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [themePreference, setThemePreference] = useState('system');
 
   useEffect(() => {
     let isMounted = true;
@@ -14,8 +24,15 @@ export default function App() {
     const setupDatabase = async () => {
       try {
         await initDB();
+        const [seenOnboarding, savedThemePreference] = await Promise.all([
+          hasSeenOnboarding(),
+          getThemePreference(),
+          new Promise((resolve) => setTimeout(resolve, 1400)),
+        ]);
 
         if (isMounted) {
+          setThemePreference(savedThemePreference);
+          setShowOnboarding(!seenOnboarding);
           setIsReady(true);
         }
       } catch (error) {
@@ -38,6 +55,16 @@ export default function App() {
     };
   }, []);
 
+  const handleFinishOnboarding = async () => {
+    try {
+      await setOnboardingSeen();
+      setShowOnboarding(false);
+    } catch (error) {
+      console.error('Erro ao salvar onboarding:', error);
+      Alert.alert('Erro', 'Nao foi possivel salvar a preferencia inicial.');
+    }
+  };
+
   if (hasError) {
     return (
       <View style={globalStyles.centeredContainer}>
@@ -49,13 +76,20 @@ export default function App() {
   }
 
   if (!isReady) {
+    return <SplashScreen />;
+  }
+
+  if (showOnboarding) {
     return (
-      <View style={globalStyles.centeredContainer}>
-        <ActivityIndicator size="large" color="#28A745" />
-        <Text style={globalStyles.loadingText}>Carregando...</Text>
-      </View>
+      <ThemeProvider initialPreference={themePreference}>
+        <OnboardingScreen onFinish={handleFinishOnboarding} />
+      </ThemeProvider>
     );
   }
 
-  return <Routes />;
+  return (
+    <ThemeProvider initialPreference={themePreference}>
+      <Routes />
+    </ThemeProvider>
+  );
 }

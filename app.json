@@ -1,5 +1,11 @@
 {
-  "plugins": [
-    "expo-sqlite"
-  ]
+  "expo": {
+    "name": "Jade Controle de Gastos",
+    "slug": "jade-controle-gastos",
+    "version": "1.0.0",
+    "icon": "./src/assets/logo.png",
+    "plugins": [
+      "expo-sqlite"
+    ]
+  }
 }

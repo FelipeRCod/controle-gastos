@@ -1,6 +1,13 @@
 import * as SQLite from 'expo-sqlite';
+import {
+  CATEGORY_KEYS,
+  getCategoryLabel,
+  inferCategoryKey,
+  normalizeCategoryKey,
+} from '../constants/categories';
 
 let databasePromise;
+const ONBOARDING_VERSION = '2';
 
 const getDatabase = async () => {
   if (!databasePromise) {
@@ -19,21 +26,80 @@ export const initDB = async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       descricao TEXT NOT NULL,
       categoria TEXT NOT NULL,
+      categoria_base TEXT NOT NULL DEFAULT 'other',
       valor REAL NOT NULL,
       data TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS contas_pagar (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      descricao TEXT NOT NULL,
+      categoria TEXT NOT NULL,
+      categoria_base TEXT NOT NULL DEFAULT 'other',
+      valor REAL NOT NULL,
+      data_vencimento TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pendente',
+      data_pagamento TEXT,
+      expense_id INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS app_settings (
+      chave TEXT PRIMARY KEY NOT NULL,
+      valor TEXT NOT NULL
+    );
   `);
+
+  await ensureColumn(db, 'gastos', 'categoria_base', "TEXT NOT NULL DEFAULT 'other'");
+  await ensureColumn(db, 'contas_pagar', 'categoria_base', "TEXT NOT NULL DEFAULT 'other'");
+  await backfillCategoryBase(db, 'gastos');
+  await backfillCategoryBase(db, 'contas_pagar');
+};
+
+const ensureColumn = async (db, tableName, columnName, columnDefinition) => {
+  const columns = await db.getAllAsync(`PRAGMA table_info(${tableName})`);
+  const hasColumn = columns.some((column) => column.name === columnName);
+
+  if (!hasColumn) {
+    await db.execAsync(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`);
+  }
+};
+
+const backfillCategoryBase = async (db, tableName) => {
+  const rows = await db.getAllAsync(
+    `SELECT id, categoria, categoria_base FROM ${tableName}`
+  );
+
+  await Promise.all(rows.map((row) => {
+    const normalizedKey = normalizeCategoryKey(row.categoria_base);
+
+    if (normalizedKey !== CATEGORY_KEYS.OTHER || !row.categoria) {
+      return Promise.resolve();
+    }
+
+    return db.runAsync(
+      `UPDATE ${tableName} SET categoria_base = $categoriaBase WHERE id = $id`,
+      {
+        $categoriaBase: inferCategoryKey(row.categoria),
+        $id: row.id,
+      }
+    );
+  }));
 };
 
 // Função para inserir um registro na tabela
-export const addExpense = async (descricao, categoria, valor, data) => {
+export const addExpense = async (descricao, categoriaBase, categoria, valor, data) => {
   const db = await getDatabase();
+  const normalizedCategoryBase = normalizeCategoryKey(categoriaBase);
+  const displayCategory = getCategoryLabel(normalizedCategoryBase, categoria);
 
   return db.runAsync(
-    'INSERT INTO gastos (descricao, categoria, valor, data) VALUES ($descricao, $categoria, $valor, $data)',
+    `INSERT INTO gastos
+      (descricao, categoria, categoria_base, valor, data)
+      VALUES ($descricao, $categoria, $categoriaBase, $valor, $data)`,
     {
       $descricao: descricao,
-      $categoria: categoria,
+      $categoria: displayCategory,
+      $categoriaBase: normalizedCategoryBase,
       $valor: valor,
       $data: data,
     }
@@ -53,4 +119,125 @@ export const deleteExpense = async (id) => {
   const db = await getDatabase();
 
   return db.runAsync('DELETE FROM gastos WHERE id = $id', { $id: id });
+};
+
+export const addPayable = async (descricao, categoriaBase, categoria, valor, dataVencimento) => {
+  const db = await getDatabase();
+  const normalizedCategoryBase = normalizeCategoryKey(categoriaBase);
+  const displayCategory = getCategoryLabel(normalizedCategoryBase, categoria);
+
+  return db.runAsync(
+    `INSERT INTO contas_pagar
+      (descricao, categoria, categoria_base, valor, data_vencimento, status)
+      VALUES ($descricao, $categoria, $categoriaBase, $valor, $dataVencimento, 'pendente')`,
+    {
+      $descricao: descricao,
+      $categoria: displayCategory,
+      $categoriaBase: normalizedCategoryBase,
+      $valor: valor,
+      $dataVencimento: dataVencimento,
+    }
+  );
+};
+
+export const getPayables = async () => {
+  const db = await getDatabase();
+
+  return db.getAllAsync(`
+    SELECT * FROM contas_pagar
+    ORDER BY
+      CASE status WHEN 'pendente' THEN 0 ELSE 1 END,
+      id DESC
+  `);
+};
+
+export const markPayableAsPaid = async (id) => {
+  const db = await getDatabase();
+  let paidExpenseId = null;
+
+  await db.withExclusiveTransactionAsync(async (tx) => {
+    const payable = await tx.getFirstAsync(
+      'SELECT * FROM contas_pagar WHERE id = $id AND status = $status',
+      { $id: id, $status: 'pendente' }
+    );
+
+    if (!payable) {
+      throw new Error('Conta inexistente ou ja paga.');
+    }
+
+    const paymentDate = new Date().toLocaleDateString('pt-BR');
+    const result = await tx.runAsync(
+      `INSERT INTO gastos
+        (descricao, categoria, categoria_base, valor, data)
+        VALUES ($descricao, $categoria, $categoriaBase, $valor, $data)`,
+      {
+        $descricao: payable.descricao,
+        $categoria: payable.categoria,
+        $categoriaBase: normalizeCategoryKey(payable.categoria_base),
+        $valor: payable.valor,
+        $data: paymentDate,
+      }
+    );
+
+    paidExpenseId = result.lastInsertRowId;
+
+    await tx.runAsync(
+      `UPDATE contas_pagar
+       SET status = 'paga', data_pagamento = $dataPagamento, expense_id = $expenseId
+       WHERE id = $id`,
+      {
+        $dataPagamento: paymentDate,
+        $expenseId: paidExpenseId,
+        $id: id,
+      }
+    );
+  });
+
+  return paidExpenseId;
+};
+
+export const hasSeenOnboarding = async () => {
+  const db = await getDatabase();
+  const setting = await db.getFirstAsync(
+    'SELECT valor FROM app_settings WHERE chave = $chave',
+    { $chave: 'onboarding_version' }
+  );
+
+  return setting?.valor === ONBOARDING_VERSION;
+};
+
+export const setOnboardingSeen = async () => {
+  const db = await getDatabase();
+
+  return db.runAsync(
+    `INSERT INTO app_settings (chave, valor)
+     VALUES ($chave, $valor)
+     ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor`,
+    { $chave: 'onboarding_version', $valor: ONBOARDING_VERSION }
+  );
+};
+
+export const getThemePreference = async () => {
+  const db = await getDatabase();
+  const setting = await db.getFirstAsync(
+    'SELECT valor FROM app_settings WHERE chave = $chave',
+    { $chave: 'theme_preference' }
+  );
+
+  if (['system', 'light', 'dark'].includes(setting?.valor)) {
+    return setting.valor;
+  }
+
+  return 'system';
+};
+
+export const saveThemePreference = async (themePreference) => {
+  const db = await getDatabase();
+
+  return db.runAsync(
+    `INSERT INTO app_settings (chave, valor)
+     VALUES ($chave, $valor)
+     ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor`,
+    { $chave: 'theme_preference', $valor: themePreference }
+  );
 };

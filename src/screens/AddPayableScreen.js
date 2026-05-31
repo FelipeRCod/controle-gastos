@@ -10,18 +10,18 @@ import {
 } from 'react-native';
 import CategoryPicker from '../components/CategoryPicker';
 import { CATEGORY_KEYS } from '../constants/categories';
-import { addExpense } from '../database/database';
+import { addPayable } from '../database/database';
 import { useAppTheme } from '../theme/ThemeContext';
 import { parseCurrencyValue } from '../utils/currency';
 import { isValidBrazilianDate } from '../utils/dateFilters';
 
-export default function AddExpenseScreen({ navigation }) {
+export default function AddPayableScreen({ navigation }) {
   const { colors, styles } = useAppTheme();
   const [descricao, setDescricao] = useState('');
   const [categoriaBase, setCategoriaBase] = useState('');
   const [categoriaOutros, setCategoriaOutros] = useState('');
   const [valor, setValor] = useState('');
-  const [data, setData] = useState('');
+  const [dataVencimento, setDataVencimento] = useState('');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -35,10 +35,10 @@ export default function AddExpenseScreen({ navigation }) {
       ? categoriaOutrosTratada
       : '';
     const valorTratado = valor.trim();
-    const dataTratada = data.trim();
+    const dataTratada = dataVencimento.trim();
 
     if (!descricaoTratada || !categoriaBase || !valorTratado || !dataTratada) {
-      Alert.alert('Erro de Validacao', 'Por favor, preencha todos os campos obrigatorios.');
+      Alert.alert('Erro de Validacao', 'Preencha todos os campos da despesa.');
       return;
     }
 
@@ -58,13 +58,13 @@ export default function AddExpenseScreen({ navigation }) {
     }
 
     if (!isValidBrazilianDate(dataTratada)) {
-      Alert.alert('Erro de Validacao', 'Informe a data no formato DD/MM/AAAA.');
+      Alert.alert('Erro de Validacao', 'Informe a data de vencimento no formato DD/MM/AAAA.');
       return;
     }
 
     try {
       setSaving(true);
-      await addExpense(
+      await addPayable(
         descricaoTratada,
         categoriaBase,
         categoriaTratada,
@@ -73,8 +73,8 @@ export default function AddExpenseScreen({ navigation }) {
       );
       navigation.goBack();
     } catch (error) {
-      console.error('Erro ao salvar gasto:', error);
-      Alert.alert('Erro', 'Nao foi possivel salvar este gasto.');
+      console.error('Erro ao cadastrar despesa:', error);
+      Alert.alert('Erro', 'Nao foi possivel cadastrar esta despesa.');
     } finally {
       setSaving(false);
     }
@@ -89,15 +89,15 @@ export default function AddExpenseScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.formScrollContent}
       >
-        <Text style={styles.screenTitle}>Cadastrar gasto</Text>
+        <Text style={styles.screenTitle}>Cadastrar despesa</Text>
         <Text style={styles.screenSubtitle}>
-          Registre um gasto que ja aconteceu.
+          Ela fica pendente e so entra nos gastos quando for paga.
         </Text>
 
-        <Text style={styles.label}>Descricao do Gasto</Text>
+        <Text style={styles.label}>Descricao da Despesa</Text>
         <TextInput
           style={styles.input}
-          placeholder="Ex: Conta de Luz"
+          placeholder="Ex: Internet"
           placeholderTextColor={colors.muted}
           value={descricao}
           onChangeText={setDescricao}
@@ -135,13 +135,13 @@ export default function AddExpenseScreen({ navigation }) {
           returnKeyType="next"
         />
 
-        <Text style={styles.label}>Data</Text>
+        <Text style={styles.label}>Data de Vencimento</Text>
         <TextInput
           style={styles.input}
           placeholder="DD/MM/AAAA"
           placeholderTextColor={colors.muted}
-          value={data}
-          onChangeText={setData}
+          value={dataVencimento}
+          onChangeText={setDataVencimento}
           keyboardType="numbers-and-punctuation"
           returnKeyType="done"
         />
@@ -152,7 +152,7 @@ export default function AddExpenseScreen({ navigation }) {
           disabled={saving}
         >
           <Text style={styles.buttonText}>
-            {saving ? 'Salvando...' : 'Salvar Gasto'}
+            {saving ? 'Salvando...' : 'Salvar Despesa'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
