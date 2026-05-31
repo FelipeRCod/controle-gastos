@@ -227,6 +227,13 @@ export const createGlobalStyles = (themeColors = darkColors) => StyleSheet.creat
     marginTop: 8,
     lineHeight: 18,
   },
+  gestureHint: {
+    color: themeColors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 10,
+    marginTop: -2,
+  },
   listLoadingContainer: {
     flex: 1,
     alignItems: 'center',

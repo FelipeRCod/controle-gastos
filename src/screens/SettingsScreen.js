@@ -15,6 +15,9 @@ export default function SettingsScreen({ navigation }) {
         <Text style={styles.screenSubtitle}>
           Ajuste a aparência e consulte informações do Jade Controle de Gastos.
         </Text>
+        <Text style={styles.menuDescription}>
+          Itens podem ser editados ou enviados para a Lixeira usando o gesto de arrastar.
+        </Text>
       </View>
 
       <ThemeSelector />

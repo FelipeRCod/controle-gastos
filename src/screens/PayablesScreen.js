@@ -390,6 +390,10 @@ export default function PayablesScreen({ navigation }) {
         )}
       </View>
 
+      <Text style={styles.gestureHint}>
+        Dica: arraste uma despesa para a direita para editar ou para a esquerda para excluir.
+      </Text>
+
       <Modal
         animationType="fade"
         transparent

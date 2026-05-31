@@ -7,7 +7,7 @@ import {
 } from '../constants/categories';
 
 let databasePromise;
-const ONBOARDING_VERSION = '3';
+const ONBOARDING_VERSION = '4';
 const TRASH_RETENTION_DAYS = 30;
 
 const getDatabase = async () => {

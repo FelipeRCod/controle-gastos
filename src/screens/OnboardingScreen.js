@@ -20,6 +20,10 @@ const steps = [
     title: 'Pague e registre',
     text: 'Quando marcar uma despesa como paga, ela entra automaticamente no Controle de Gastos.',
   },
+  {
+    title: 'Edite ou exclua com gesto',
+    text: 'Arraste um gasto ou despesa para a direita para editar. Arraste para a esquerda para excluir e enviar para a Lixeira.',
+  },
 ];
 
 export default function OnboardingScreen({ onFinish }) {

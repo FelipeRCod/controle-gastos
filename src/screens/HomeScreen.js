@@ -373,6 +373,10 @@ export default function HomeScreen({ navigation }) {
         )}
       </View>
 
+      <Text style={styles.gestureHint}>
+        Dica: arraste um item para a direita para editar ou para a esquerda para excluir.
+      </Text>
+
       <Modal
         animationType="fade"
         transparent
